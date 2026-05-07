@@ -86,7 +86,7 @@ spec:
       containers:
         - name: auth-service
           image: ghcr.io/altair288/plm-auth-service:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 8081
               name: http
@@ -289,7 +289,7 @@ spec:
       containers:
         - name: attribute-service
           image: ghcr.io/altair288/plm-attribute-service:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 8082
               name: http
@@ -381,7 +381,7 @@ spec:
       containers:
         - name: gateway
           image: ghcr.io/altair288/plm-gateway:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
               name: http
