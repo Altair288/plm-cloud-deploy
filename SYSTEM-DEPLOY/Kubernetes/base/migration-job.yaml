@@ -1,0 +1,63 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: plm-infrastructure-migrate
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: plm-infrastructure-migrate
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        - name: wait-postgres
+          image: postgres:17-alpine
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: plm-cloud-config
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: plm-cloud-config
+                  key: POSTGRES_USER
+          command:
+            - sh
+            - -ec
+            - until pg_isready -h postgres -p 5432 -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do echo waiting for postgres; sleep 3; done
+      containers:
+        - name: plm-infrastructure
+          image: ghcr.io/altair288/plm-infrastructure:latest
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: plm-cloud-config
+                  key: SPRING_PROFILES_ACTIVE
+            - name: PLM_DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: plm-cloud-config
+                  key: PLM_DATASOURCE_URL
+            - name: PLM_DATASOURCE_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: plm-cloud-config
+                  key: PLM_DATASOURCE_USERNAME
+            - name: PLM_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: plm-cloud-secret
+                  key: POSTGRES_PASSWORD

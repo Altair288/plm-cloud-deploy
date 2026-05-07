@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: plm-cloud-config
+data:
+  POSTGRES_DB: plm
+  POSTGRES_USER: admin
+  PLM_DATASOURCE_URL: jdbc:postgresql://postgres:5432/plm
+  PLM_DATASOURCE_USERNAME: admin
+  PLM_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+  SPRING_PROFILES_ACTIVE: dev
+  PLM_AUTH_REDIS_HOST: redis
+  PLM_AUTH_REDIS_PORT: "6379"
+  PLM_AUTH_REDIS_DATABASE: "0"
+  PLM_AUTH_PLATFORM_ADMIN_BOOTSTRAP_ENABLED: "true"
+  PLM_AUTH_PLATFORM_ADMIN_USERNAME: plm_admin
+  PLM_AUTH_PLATFORM_ADMIN_DISPLAY_NAME: Platform Admin
+  PLM_AUTH_PLATFORM_ADMIN_EMAIL: admin@plm.local
+  PLM_AUTH_PLATFORM_ADMIN_ROLE_CODE: platform_super_admin
+  PLM_PUBLIC_BASE_URL: http://localhost:3000
+  PLM_AUTH_INVITATION_EMAIL_ACCEPT_URL_TEMPLATE: http://localhost:3000/invite/email?token=%s
+  PLM_AUTH_INVITATION_LINK_ACCEPT_URL_TEMPLATE: http://localhost:3000/invite/link?token=%s
+  PLM_AUTH_RESEND_FROM_EMAIL: no-reply@altair288.eu.org
+  PLM_AUTH_RESEND_FROM_NAME: PLM Cloud
+  INTERNAL_API_BASE_URL: http://gateway:8080

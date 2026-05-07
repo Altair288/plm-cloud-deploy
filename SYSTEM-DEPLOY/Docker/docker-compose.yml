@@ -1,0 +1,156 @@
+name: plm-cloud
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    hostname: postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-plm}
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-plm}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      plm-network:
+        aliases:
+          - postgres
+
+  redis:
+    image: redis:latest
+    restart: unless-stopped
+    hostname: redis
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change-me}
+    command: ["sh", "-c", "redis-server --appendonly yes --requirepass \"${REDIS_PASSWORD:-change-me}\""]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-change-me} ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      plm-network:
+        aliases:
+          - redis
+
+  plm-infrastructure:
+    image: ghcr.io/${GHCR_OWNER:-altair288}/plm-infrastructure:${BACKEND_IMAGE_TAG:-latest}
+    pull_policy: always
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      PLM_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-plm}
+      PLM_DATASOURCE_USERNAME: ${POSTGRES_USER:-admin}
+      PLM_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    networks:
+      - plm-network
+
+  auth-service:
+    image: ghcr.io/${GHCR_OWNER:-altair288}/plm-auth-service:${BACKEND_IMAGE_TAG:-latest}
+    pull_policy: always
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      plm-infrastructure:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      PLM_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-plm}
+      PLM_DATASOURCE_USERNAME: ${POSTGRES_USER:-admin}
+      PLM_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      PLM_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      PLM_AUTH_REDIS_HOST: redis
+      PLM_AUTH_REDIS_PORT: 6379
+      PLM_AUTH_REDIS_PASSWORD: ${REDIS_PASSWORD:-change-me}
+      PLM_AUTH_REDIS_DATABASE: ${PLM_AUTH_REDIS_DATABASE:-0}
+      PLM_AUTH_PLATFORM_ADMIN_BOOTSTRAP_ENABLED: ${PLM_AUTH_PLATFORM_ADMIN_BOOTSTRAP_ENABLED:-true}
+      PLM_AUTH_PLATFORM_ADMIN_USERNAME: ${PLM_AUTH_PLATFORM_ADMIN_USERNAME:-plm_admin}
+      PLM_AUTH_PLATFORM_ADMIN_DISPLAY_NAME: ${PLM_AUTH_PLATFORM_ADMIN_DISPLAY_NAME:-Platform Admin}
+      PLM_AUTH_PLATFORM_ADMIN_EMAIL: ${PLM_AUTH_PLATFORM_ADMIN_EMAIL:-admin@plm.local}
+      PLM_AUTH_PLATFORM_ADMIN_PASSWORD: ${PLM_AUTH_PLATFORM_ADMIN_PASSWORD:-Admin@123456}
+      PLM_AUTH_PLATFORM_ADMIN_ROLE_CODE: ${PLM_AUTH_PLATFORM_ADMIN_ROLE_CODE:-platform_super_admin}
+      PLM_AUTH_INVITATION_EMAIL_ACCEPT_URL_TEMPLATE: ${PLM_PUBLIC_BASE_URL:-http://localhost:3000}/invite/email?token=%s
+      PLM_AUTH_INVITATION_LINK_ACCEPT_URL_TEMPLATE: ${PLM_PUBLIC_BASE_URL:-http://localhost:3000}/invite/link?token=%s
+      PLM_AUTH_RESEND_API_KEY: ${PLM_AUTH_RESEND_API_KEY:-}
+      PLM_AUTH_RESEND_FROM_EMAIL: ${PLM_AUTH_RESEND_FROM_EMAIL:-no-reply@example.com}
+      PLM_AUTH_RESEND_FROM_NAME: ${PLM_AUTH_RESEND_FROM_NAME:-PLM Cloud}
+    networks:
+      - plm-network
+
+  attribute-service:
+    image: ghcr.io/${GHCR_OWNER:-altair288}/plm-attribute-service:${BACKEND_IMAGE_TAG:-latest}
+    pull_policy: always
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      plm-infrastructure:
+        condition: service_completed_successfully
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      PLM_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-plm}
+      PLM_DATASOURCE_USERNAME: ${POSTGRES_USER:-admin}
+      PLM_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      PLM_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+    networks:
+      - plm-network
+
+  gateway:
+    image: ghcr.io/${GHCR_OWNER:-altair288}/plm-gateway:${BACKEND_IMAGE_TAG:-latest}
+    pull_policy: always
+    restart: unless-stopped
+    depends_on:
+      auth-service:
+        condition: service_started
+      attribute-service:
+        condition: service_started
+    ports:
+      - "${GATEWAY_PORT:-8080}:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_0_ID: auth-service
+      SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_0_URI: http://auth-service:8081
+      SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_0_PREDICATES_0: Path=/auth/**
+      SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_1_ID: attribute-service
+      SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_1_URI: http://attribute-service:8082
+      SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_ROUTES_1_PREDICATES_0: Path=/api/meta/**
+    networks:
+      - plm-network
+
+  frontend:
+    image: ghcr.io/${GHCR_OWNER:-altair288}/plm-cloud-frontend:${FRONTEND_IMAGE_TAG:-latest}
+    pull_policy: always
+    restart: unless-stopped
+    depends_on:
+      gateway:
+        condition: service_started
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
+      INTERNAL_API_BASE_URL: http://gateway:8080
+    networks:
+      - plm-network
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  plm-network:
+    driver: bridge
