@@ -458,7 +458,7 @@ spec:
       containers:
         - name: frontend
           image: ghcr.io/altair288/plm-cloud-frontend:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 3000
               name: http
