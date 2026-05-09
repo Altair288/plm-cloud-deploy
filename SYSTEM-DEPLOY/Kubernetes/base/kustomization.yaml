@@ -4,3 +4,6 @@ resources:
   - data.yaml
   - migration-job.yaml
   - apps.yaml
+patches:
+  - path: backend-image-patch.yaml
+  - path: frontend-image-patch.yaml
