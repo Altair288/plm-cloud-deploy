@@ -32,7 +32,7 @@ spec:
       containers:
         - name: plm-infrastructure
           image: ghcr.io/altair288/plm-infrastructure:latest
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           resources:
             requests:
               cpu: 100m
