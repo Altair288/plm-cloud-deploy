@@ -7,4 +7,4 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: ghcr.io/altair288/plm-cloud-frontend:sha-0bae7348c183
+          image: ghcr.io/altair288/plm-cloud-frontend:sha-f74cba6d8a68
