@@ -7,7 +7,7 @@ spec:
     spec:
       containers:
         - name: plm-infrastructure
-          image: ghcr.io/altair288/plm-infrastructure:sha-6e54e30fcb2f
+          image: ghcr.io/altair288/plm-infrastructure:sha-ac87475427c9
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: auth-service
-          image: ghcr.io/altair288/plm-auth-service:sha-6e54e30fcb2f
+          image: ghcr.io/altair288/plm-auth-service:sha-ac87475427c9
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -29,7 +29,7 @@ spec:
     spec:
       containers:
         - name: attribute-service
-          image: ghcr.io/altair288/plm-attribute-service:sha-6e54e30fcb2f
+          image: ghcr.io/altair288/plm-attribute-service:sha-ac87475427c9
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -40,4 +40,4 @@ spec:
     spec:
       containers:
         - name: gateway
-          image: ghcr.io/altair288/plm-gateway:sha-6e54e30fcb2f
+          image: ghcr.io/altair288/plm-gateway:sha-ac87475427c9
